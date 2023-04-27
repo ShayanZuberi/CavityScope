@@ -13,7 +13,7 @@ Friendly GUI: The app has a simple, user-friendly interface that allows users to
 # Getting started
 To get started with CavityScope, you'll need to:
 
-Clone the repo: git clone git@github.com:ShayanZuberi/CavityScope.git
+Clone the repo: git clone https://github.com/ShayanZuberi/CavityScope
 Install the necessary dependencies: pip install -r requirements.txt
 Start the Flask app: flask run
 Navigate to http://localhost:5000 in your web browser.
