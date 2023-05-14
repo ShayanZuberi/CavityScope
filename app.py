@@ -59,39 +59,61 @@ def process_image():
   retval, buffer_img = cv2.imencode('.jpg', processed_img)
   response = {'image': base64.b64encode(buffer_img).decode('utf-8')} 
   return jsonify(response)
-
+ 
 def detect_cavity(img):
-    # Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Convert the image to the LAB color space
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    
+    # Define the color ranges for cavity detection
+    color_ranges = [
+        # Dark Brown/Black
+        (np.array([0, 0, 0], dtype=np.uint8), np.array([40, 128, 128], dtype=np.uint8)),
+        
+        # Light Brown
+        (np.array([20, 40, 100], dtype=np.uint8), np.array([40, 170, 180], dtype=np.uint8)),
+        
+        # Yellowish/Brownish
+        (np.array([0, 100, 120], dtype=np.uint8), np.array([30, 170, 190], dtype=np.uint8)),
+        
+        # Dark Gray/Black
+        (np.array([0, 0, 0], dtype=np.uint8), np.array([40, 40, 40], dtype=np.uint8)),
+        
+        # Unnatural Color Contrast (Low Intensity)
+        (np.array([0, 0, 0], dtype=np.uint8), np.array([255, 255, 50], dtype=np.uint8)),
+        
+        # Greenish
+        (np.array([0, 50, 0], dtype=np.uint8), np.array([60, 255, 60], dtype=np.uint8)),
+        
+        # Bluish
+        (np.array([0, 0, 50], dtype=np.uint8), np.array([60, 60, 255], dtype=np.uint8))
+    ]
+    
+    # Create an empty mask
+    mask = np.zeros(img.shape[:2], dtype=np.uint8)
+    
+    # Apply color thresholding for each color range
+    for lower_color, upper_color in color_ranges:
+        color_mask = cv2.inRange(lab, lower_color, upper_color)
+        mask = cv2.bitwise_or(mask, color_mask)
+    
+    # Apply morphological operations to remove noise
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    
+    # Find contours of the cavity areas
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Draw rectangles around the cavity areas on the original image
+    img_with_rectangles = img.copy()
+    for contour in contours:
+        (x, y, w, h) = cv2.boundingRect(contour)
+        cv2.rectangle(img_with_rectangles, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    
+    return img_with_rectangles
 
-    # Apply a median blur to reduce noise
-    gray = cv2.medianBlur(gray, 5)
 
-    # Apply adaptive thresholding
-    threshold = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
-    # Find contours
-    contours, hierarchy = cv2.findContours(threshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Iterate over contours and identify cavities
-    for cnt in contours:
-        # Ignore small contours
-        if cv2.contourArea(cnt) < 500:
-            continue
-
-        # Check if the contour is inside the tooth area
-        mask = np.zeros(gray.shape, np.uint8)
-        cv2.drawContours(mask, [cnt], -1, 255, -1)
-        masked_gray = cv2.bitwise_and(gray, mask)
-        avg_color = np.mean(masked_gray)
-        if avg_color > 300:
-            continue
-
-        # Draw a bounding box around the cavity
-        x, y, w, h = cv2.boundingRect(cnt)
-        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
-
-    return img
 
 
 
