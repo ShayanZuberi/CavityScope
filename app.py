@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, g
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import cv2
+#importing numpy
 import numpy as np
 import base64
 app = Flask(__name__)
